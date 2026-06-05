@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BRUTAL MAGIC / ALERAK - HYPER-KINETIC HUD</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700;800&display=swap');
+
+        :root {
+            --bg-color: #030303;
+            --text-color: #e0e0e0;
+            --neon-lime: #ccff00;
+            --kinetic-magenta: #ff00ff;
+            --cyber-blue: #00f0ff;
+            --glitch-red: #ff0033;
+            --font-mono: 'JetBrains Mono', monospace;
+            --border-width: 2px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            cursor: none !important;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-mono);
+            overflow-x: hidden;
+            line-height: 1.4;
+            min-height: 200vh;
+        }
+
+        /* Scanline Effect */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 9998;
+            background-size: 100% 4px, 3px 100%;
+            pointer-events: none;
+        }
+
+        /* --- SVG Grain Overlay --- */
+        .grain-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.12;
+            background: transparent;
+        }
+
+        /* --- Custom Magnetic Cursor --- */
+        #cursor {
+            position: fixed;
+            width: 12px;
+            height: 12px;
+            background-color: var(--neon-lime);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 10000;
+            mix-blend-mode: difference;
+            transform: translate(-50%, -50%);
+            will-change: transform, width, height, background-color;
+            transition: width 0.3s cubic-bezier(0.23, 1, 0.32, 1),
+                        height 0.3s cubic-bezier(0.23, 1, 0.32, 1),
+                        background-color 0.3s ease;
+        }
+
+        #cursor.magnetic-active {
+            width: 60px;
+            height: 60px;
+            background-color: transparent;
+            border: 2px solid var(--kinetic-magenta);
+            border-radius: 4px;
+        }
+
+        /* --- Layout Container --- */
+        #scroll-content {
+            width: 100%;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 4rem;
+            will-change: transform;
+        }
+
+        /* --- Hero Section --- */
+        .hero {
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            perspective: 1000px;
+            overflow: hidden;
+            border-bottom: 2px solid var(--text-color);
+        }
+
+        .hero-logo {
+            font-size: clamp(3rem, 10vw, 8rem);
+            font-weight: 900;
+            text-align: center;
+            transform-style: preserve-3d;
+            animation: morphLogo 10s infinite ease-in-out;
+            color: var(--text-color);
+            line-height: 0.9;
+        }
+
+        @keyframes morphLogo {
+            0%, 100% { transform: rotateY(0deg) rotateX(0deg) scale(1); text-shadow: 0 0 0px transparent; }
+            25% { transform: rotateY(20deg) rotateX(10deg) scale(1.05); color: var(--neon-lime); text-shadow: 10px 0 var(--kinetic-magenta); }
+            50% { transform: rotateY(-20deg) rotateX(-10deg) scale(0.95); color: var(--kinetic-magenta); text-shadow: -10px 0 var(--cyber-blue); }
+            75% { transform: rotateY(10deg) rotateX(20deg) scale(1.02); color: var(--cyber-blue); text-shadow: 5px 5px var(--neon-lime); }
+        }
+
+        .marquee-container {
+            width: 100%;
+            background: var(--neon-lime);
+            color: black;
+            padding: 10px 0;
+            overflow: hidden;
+            white-space: nowrap;
+            position: absolute;
+            bottom: 10%;
+            transform: rotate(-2deg);
+            font-weight: 800;
+            font-size: 1.2rem;
+            border-top: 2px solid black;
+            border-bottom: 2px solid black;
+        }
+
+        .marquee-content {
+            display: inline-block;
+            animation: marqueeMove 20s linear infinite;
+        }
+
+        @keyframes marqueeMove {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        /* --- UI Elements --- */
+        .brutalist-card {
+            border: var(--border-width) solid var(--text-color);
+            padding: 1.5rem;
+            position: relative;
+            background: rgba(255, 255, 255, 0.02);
+            transition: all 0.3s ease;
+        }
+
+        .brutalist-card:hover {
+            border-color: var(--neon-lime);
+            box-shadow: 5px 5px 0px var(--neon-lime);
+        }
+
+        .status-pill {
+            display: inline-block;
+            font-size: 0.7rem;
+            font-weight: 800;
+            padding: 2px 8px;
+            background: var(--neon-lime);
+            color: black;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+        }
+
+        .module-title {
+            font-size: 1.2rem;
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .module-title::before {
+            content: "";
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: var(--cyber-blue);
+        }
+
+        button.brutalist-btn {
+            background: transparent;
+            border: var(--border-width) solid var(--neon-lime);
+            color: var(--neon-lime);
+            padding: 10px 20px;
+            font-family: var(--font-mono);
+            font-weight: 800;
+            text-transform: uppercase;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button.brutalist-btn:hover {
+            background: var(--neon-lime);
+            color: black;
+        }
+
+        input[type="text"], textarea {
+            background: #111;
+            border: 1px solid #444;
+            color: var(--text-color);
+            padding: 10px;
+            font-family: var(--font-mono);
+            width: 100%;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        input[type="text"]:focus, textarea:focus {
+            border-color: var(--cyber-blue);
+        }
+
+        .hud-metric {
+            font-size: 0.75rem;
+            color: var(--cyber-blue);
+            margin-top: 1rem;
+            font-weight: 400;
+            transition: color 0.3s ease;
+        }
+
+        .glitch-flicker {
+            animation: flicker 0.1s infinite alternate;
+        }
+
+        @keyframes flicker {
+            0% { opacity: 1; }
+            100% { opacity: 0.7; transform: translateX(1px); }
+        }
+
+        .modules-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+        }
+
+        /* --- MODULE 03: SCHEMATIC --- */
+        .schematic-viewport {
+            width: 100%;
+            height: 200px;
+            border: 1px solid #444;
+            margin-top: 1rem;
+            display: grid;
+            gap: 4px;
+            padding: 4px;
+            background: #111;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .schematic-item {
+            background: #222;
+            border: 1px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.6rem;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        .schematic-item.active {
+            border-color: var(--cyber-blue);
+            color: var(--cyber-blue);
+        }
+
+        .layout-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .layout-controls button {
+            flex: 1;
+            font-size: 0.7rem;
+            padding: 5px;
+        }
+
+        /* --- MODULE 05: LEADERBOARD --- */
+        .leaderboard-container {
+            width: 100%;
+            margin-top: 1rem;
+            font-size: 0.75rem;
+            position: relative;
+            height: 180px; /* Fixed height for kinetic positioning */
+        }
+
+        .leaderboard-header {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            border-bottom: 1px solid #444;
+            padding: 5px;
+            color: #666;
+            text-transform: uppercase;
+            font-weight: 800;
+        }
+
+        .leaderboard-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            padding: 12px 5px;
+            border-bottom: 1px solid #222;
+            position: absolute;
+            width: 100%;
+            background: rgba(3, 3, 3, 0.8);
+            transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1), opacity 0.3s ease;
+            will-change: transform;
+        }
+
+        /* --- MODULE 06: SUMMATION --- */
+        .matrix-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            counter-reset: matrix-idx;
+            margin-top: 1rem;
+        }
+
+        .matrix-cell {
+            position: relative;
+            height: 60px;
+            background: #111;
+            border: 1px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.2rem;
+            color: #555;
+            transition: all 0.2s ease;
+            counter-increment: matrix-idx;
+        }
+
+        .matrix-cell::before {
+            content: "ID_" counter(matrix-idx, decimal-leading-zero);
+            position: absolute;
+            top: 2px; left: 2px;
+            font-size: 0.5rem;
+            color: #333;
+        }
+
+        .matrix-cell input {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 2;
+        }
+
+        .matrix-cell input:checked + .cell-val {
+            color: #ffd700;
+            text-shadow: 0 0 15px #ffd700;
+            transform: scale(1.3);
+        }
+
+        .matrix-cell .cell-val {
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
+        }
+
+        .matrix-cell input:checked ~ .bg-glow {
+            opacity: 1;
+        }
+
+        .matrix-cell .bg-glow {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 215, 0, 0.15);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        /* --- MODULE 07: CHRONOMETER --- */
+        .clock-display {
+            font-size: 5rem;
+            font-weight: 900;
+            line-height: 1;
+            letter-spacing: -2px;
+            margin: 1rem 0;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .ms-flash {
+            font-size: 2rem;
+            color: var(--neon-magenta);
+            opacity: 0.7;
+        }
+
+        .timer-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .timer-display {
+            font-size: 2rem;
+            font-family: monospace;
+            color: var(--cyber-blue);
+        }
+
+        .timer-warning {
+            color: #ff0033 !important;
+            animation: glitch-anim 0.2s infinite;
+        }
+
+        /* --- MODULE 08: GRID STRUCTURAL LAB --- */
+        .lab-viewport {
+            border: 2px solid #222;
+            padding: 10px;
+            background: #000;
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            margin: 1rem 0;
+            overflow: hidden;
+            perspective: 1000px;
+        }
+
+        .lab-grid {
+            display: grid;
+            gap: 10px;
+            transition: all 0.5s ease;
+            transform-style: preserve-3d;
+        }
+
+        .lab-area {
+            background: #111;
+            border: 1px solid #444;
+            padding: 10px;
+            font-size: 0.6rem;
+            color: #888;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-transform: uppercase;
+        }
+
+        /* Responsive States */
+        .lab-viewport[data-state="320px"] { width: 320px; }
+        .lab-viewport[data-state="320px"] .lab-grid {
+            grid-template-areas:
+                "head"
+                "nav"
+                "main"
+                "side"
+                "foot";
+        }
+
+        .lab-viewport[data-state="768px"] { width: 100%; max-width: 600px; }
+        .lab-viewport[data-state="768px"] .lab-grid {
+            grid-template-areas:
+                "head head"
+                "nav main"
+                "nav side"
+                "foot foot";
+            grid-template-columns: 100px 1fr;
+        }
+
+        .lab-viewport[data-state="1440px"] { width: 100%; }
+        .lab-viewport[data-state="1440px"] .lab-grid {
+            grid-template-areas:
+                "head head head"
+                "nav main side"
+                "foot foot foot";
+            grid-template-columns: 150px 1fr 150px;
+            transform: rotateX(10deg);
+        }
+
+        /* --- MODULE 09: SUMP PROCESSOR --- */
+        .sump-highlight {
+            color: var(--neon-lime);
+            text-shadow: 0 0 10px var(--neon-lime);
+            font-weight: bold;
+        }
+
+        /* --- MODULE 10: SPRINTER SIMULATOR --- */
+        .sprinter-viewport {
+            height: 120px;
+            background: #080808;
+            border: 2px solid #222;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .sprinter {
+            width: 50px;
+            height: 80px;
+            background: var(--neon-lime);
+            clip-path: polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%);
+            animation: sprint-steps 0.6s steps(4) infinite;
+        }
+
+        @keyframes sprint-steps {
+            0% { transform: scaleY(1) skewX(-10deg); background: var(--neon-lime); }
+            25% { transform: scaleY(0.8) skewX(10deg); background: var(--neon-magenta); }
+            50% { transform: scaleY(1.1) skewX(-15deg); background: var(--cyber-blue); }
+            75% { transform: scaleY(0.9) skewX(15deg); background: #fff; }
+        }
+
+        .paused {
+            animation-play-state: paused !important;
+            filter: grayscale(1) contrast(2);
+        }
+
+        .toggle-container {
+            margin-top: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Kinetic Switch */
+        .kinetic-switch {
+            appearance: none;
+            width: 50px;
+            height: 25px;
+            background: #222;
+            border: 2px solid #444;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .kinetic-switch:checked {
+            background: var(--neon-lime);
+            border-color: #fff;
+        }
+
+        .kinetic-switch::before {
+            content: "";
+            position: absolute;
+            top: 2px; left: 2px;
+            width: 17px; height: 17px;
+            background: #888;
+            transition: 0.3s;
+        }
+
+        .kinetic-switch:checked::before {
+            transform: translateX(25px);
+            background: #000;
+        }
+
+    </style>
+</head>
+<body>
+    <svg class="grain-overlay" xmlns="http://www.w3.org/2000/svg">
+        <filter id="noise">
+            <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" />
+            <feColorMatrix type="saturate" values="0" />
+        </filter>
+        <rect width="100%" height="100%" filter="url(#noise)" opacity="0.5" />
+    </svg>
+
+    <div id="cursor"></div>
+
+    <div id="scroll-content">
+        <header class="hero">
+            <h1 class="hero-logo glitch-text" data-text="BRUTAL MAGIC / ALERAK">BRUTAL MAGIC / ALERAK</h1>
+            <div class="marquee-container">
+                <div class="marquee-content">
+                    ALERAK STUDIO ✦ SCROLL VELOCITY ✦ INTERACTIVE SYSTEMS ✦ KINETIC BRUTALISM ✦ HUD ARCHITECTURE ✦ ALERAK STUDIO ✦ SCROLL VELOCITY ✦ INTERACTIVE SYSTEMS ✦ KINETIC BRUTALISM ✦ HUD ARCHITECTURE ✦
+                </div>
+            </div>
+        </header>
+
+        <div class="modules-grid">
+            <!-- Module 01: Palindrome Evaluator -->
+            <section class="brutalist-card magnetic" id="module-01">
+                <div class="status-pill">[STATUS: OPERATIONAL]</div>
+                <h2 class="module-title glitch-text" data-text="01 // PALINDROME.EVAL">01 // PALINDROME.EVAL</h2>
+                <div class="module-body">
+                    <input type="text" id="palindrome-input" placeholder="ENTER STRING ARRAY..." class="magnetic">
+                    <div id="palindrome-result" class="hud-metric">[IsPalindrome: NULL]</div>
+                </div>
+            </section>
+
+            <!-- Module 02: Lexical Longest Word Scanner -->
+            <section class="brutalist-card magnetic" id="module-02">
+                <div class="status-pill">[STATUS: OPERATIONAL]</div>
+                <h2 class="module-title glitch-text" data-text="02 // LEXICAL.SCAN">02 // LEXICAL.SCAN</h2>
+                <div class="module-body">
+                    <textarea id="word-scanner-input" placeholder="ENTER TELEMETRY DATA / SENTENCES..." class="magnetic" rows="3"></textarea>
+                    <button class="brutalist-btn magnetic glitch-text" id="scan-btn" data-text="ANALYZE DATA" style="margin-top: 1rem; width: 100%;">ANALYZE DATA</button>
+                    <div id="scanner-output" class="hud-metric" style="white-space: pre-line;">
+                        [Longest Word: NONE]
+                        [Word Length: 0]
+                        [Total Word Count: 0]
+                        [Character Density: 0]
+                    </div>
+                </div>
+            </section>
+
+            <!-- Module 03: Responsive Layout Array -->
+            <section class="brutalist-card magnetic" id="module-03">
+                <div class="status-pill">[STATUS: OPERATIONAL]</div>
+                <h2 class="module-title glitch-text" data-text="03 // LAYOUT.SCHEMATIC">03 // LAYOUT.SCHEMATIC</h2>
+                <div class="module-body">
+                    <div class="layout-controls">
+                        <button class="brutalist-btn magnetic glitch-text" data-size="480" data-text="480PX">480PX</button>
+                        <button class="brutalist-btn magnetic glitch-text" data-size="768" data-text="768PX">768PX</button>
+                        <button class="brutalist-btn magnetic glitch-text" data-size="1200" data-text="1200PX">1200PX</button>
+                    </div>
+                    <div id="schematic-view" class="schematic-viewport">
+                        <!-- Grid items added by JS -->
+                    </div>
+                    <div class="hud-metric" id="schematic-label">[Current Config: 1200PX]</div>
+                </div>
+            </section>
+
+            <!-- Module 04: String Rotation Matrix -->
+            <section class="brutalist-card magnetic" id="module-04">
+                <div class="status-pill">[STATUS: OPERATIONAL]</div>
+                <h2 class="module-title glitch-text" data-text="04 // ROTATION.MATRIX">04 // ROTATION.MATRIX</h2>
+                <div class="module-body">
+                    <input type="text" id="rotation-a" placeholder="STRING ALPHA..." class="magnetic" style="margin-bottom: 0.5rem;">
+                    <input type="text" id="rotation-b" placeholder="STRING BETA..." class="magnetic">
+                    <div id="rotation-result" class="hud-metric">[Minimum Shift Step Matrix: NULL]</div>
+                </div>
+            </section>
+
+            <!-- Module 05: Runner Velocity Leaderboard -->
+            <section class="brutalist-card magnetic" id="module-05">
+                <div class="status-pill">[STATUS: OPERATIONAL]</div>
+                <h2 class="module-title glitch-text" data-text="05 // VELOCITY.BOARD">05 // VELOCITY.BOARD</h2>
+                <div class="module-body">
+                    <div class="layout-controls">
+                        <button class="brutalist-btn magnetic glitch-text" id="sort-pace" data-text="SORT BY PACE">SORT BY PACE</button>
+                        <button class="brutalist-btn magnetic glitch-text" id="sort-name" data-text="SORT BY NAME">SORT BY NAME</button>
+                    </div>
+                    <div class="leaderboard-header">
+                        <div>RUNNER</div>
+                        <div>AVG PACE</div>
+                        <div>BEST</div>
+                    </div>
+                    <div class="leaderboard-container" id="leaderboard-container">
+                        <!-- Rows -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Module 06: CSS Counter & Matrix Summation -->
+            <section class="brutalist-card magnetic" id="module-06">
+                <div class="status-pill">[STATUS: OPERATIONAL]</div>
+                <h2 class="module-title glitch-text" data-text="06 // MATRIX.SUM">06 // MATRIX.SUM</h2>
+                <div class="module-body">
+                    <div class="matrix-grid" id="matrix-grid">
+                        <!-- Cells -->
+                    </div>
+                    <div id="matrix-sum-hud" class="hud-metric" style="color: var(--cyber-blue);">[Current Global Aggregate Sum: 0]</div>
+                </div>
+            </section>
+
+            <!-- Module 07: Quantum Chronometer Lab -->
+            <section class="brutalist-card magnetic" id="module-07">
+                <div class="status-pill">[STATUS: OPERATIONAL]</div>
+                <h2 class="module-title glitch-text" data-text="07 // QUANTUM.CHRONO">07 // QUANTUM.CHRONO</h2>
+                <div class="module-body">
+                    <div class="clock-display" id="main-clock">00:00:00<span class="ms-flash">.000</span></div>
+                    <div style="margin-bottom: 1.5rem;">
+                        <button class="brutalist-btn magnetic glitch-text" id="toggle-24h" data-text="TOGGLE 12/24H" style="padding: 5px 10px; font-size: 0.7rem;">TOGGLE 12/24H</button>
+                    </div>
+
+                    <div class="timer-controls">
+                        <input type="number" id="timer-input" placeholder="SECS" class="brutalist-input" style="width: 80px;">
+                        <button class="brutalist-btn magnetic glitch-text" id="start-timer" data-text="INIT_COUNTDOWN">INIT_COUNTDOWN</button>
+                        <div id="countdown-display" class="timer-display">00.00s</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Module 08: Grid Area Structural Lab -->
+            <section class="brutalist-card magnetic" id="module-08">
+                <div class="status-pill">[STATUS: OPERATIONAL]</div>
+                <h2 class="module-title glitch-text" data-text="08 // GRID.STRUCT.LAB">08 // GRID.STRUCT.LAB</h2>
+                <div class="module-body">
+                    <div class="btn-group">
+                        <button class="brutalist-btn magnetic glitch-text" data-text="MOBILE_320" onclick="setLabState('320px')">MOBILE_320</button>
+                        <button class="brutalist-btn magnetic glitch-text" data-text="TABLET_768" onclick="setLabState('768px')">TABLET_768</button>
+                        <button class="brutalist-btn magnetic glitch-text" data-text="ULTRA_1440" onclick="setLabState('1440px')">ULTRA_1440</button>
+                    </div>
+
+                    <div class="lab-viewport" id="lab-viewport" data-state="1440px">
+                        <div class="lab-grid">
+                            <div class="lab-area" style="grid-area: head;">HEADER</div>
+                            <div class="lab-area" style="grid-area: nav;">NAV_BAR</div>
+                            <div class="lab-area" style="grid-area: main;">MAIN_CONTENT_ARRAY</div>
+                            <div class="lab-area" style="grid-area: side;">SIDEBAR_META</div>
+                            <div class="lab-area" style="grid-area: foot;">FOOTER_SYSTEM</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Module 09: Integer Sump Processing Unit -->
+            <section class="brutalist-card magnetic" id="module-09">
+                <div class="status-pill">[STATUS: OPERATIONAL]</div>
+                <h2 class="module-title glitch-text" data-text="09 // INTEGER.SUMP">09 // INTEGER.SUMP</h2>
+                <div class="module-body">
+                    <p class="hud-label">INPUT_INTEGER_ARRAY (comma separated)</p>
+                    <input type="text" id="sump-input" class="brutalist-input" placeholder="e.g. 12, 45, 2, 99, 104, 6">
+                    <button class="brutalist-btn magnetic glitch-text" data-text="EXECUTE_SUMP" onclick="processSump()">EXECUTE_SUMP</button>
+
+                    <div id="sump-output" style="margin-top: 1rem; font-family: monospace; font-size: 0.85rem; line-height: 1.6;">
+                        <div id="sump-meta"></div>
+                        <div id="sump-result" class="hud-metric" style="color: var(--neon-lime);">[Sump Total: 0]</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Module 10: Kinetic Step Sprinter Simulator -->
+            <section class="brutalist-card magnetic" id="module-10">
+                <div class="status-pill">[STATUS: OPERATIONAL]</div>
+                <h2 class="module-title glitch-text" data-text="10 // SPRINTER.SIM">10 // SPRINTER.SIM</h2>
+                <div class="module-body">
+                    <div class="sprinter-viewport">
+                        <div class="sprinter" id="sprinter-asset"></div>
+                        <div style="position: absolute; bottom: 10px; width: 100%; height: 2px; background: repeating-linear-gradient(90deg, #333, #333 10px, transparent 10px, transparent 20px);"></div>
+                    </div>
+
+                    <div class="toggle-container">
+                        <input type="checkbox" id="pause-toggle" class="kinetic-switch magnetic">
+                        <label for="pause-toggle" class="hud-label" style="margin: 0;">INTERCEPT_KINETIC_FLOW</label>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        // --- UTILS ---
+        const lerp = (a, b, n) => (1 - n) * a + n * b;
+
+        // --- GLITCH DECODE ENGINE ---
+        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+";
+        function decodeEffect(element) {
+            const originalText = element.getAttribute('data-text') || element.innerText;
+            let iteration = 0;
+            const interval = setInterval(() => {
+                element.innerText = originalText.split("")
+                    .map((char, index) => {
+                        if (index < iteration) return originalText[index];
+                        return chars[Math.floor(Math.random() * chars.length)];
+                    })
+                    .join("");
+
+                if (iteration >= originalText.length) clearInterval(interval);
+                iteration += 1 / 3;
+            }, 30);
+        }
+
+        document.querySelectorAll('.glitch-text').forEach(el => {
+            el.addEventListener('mouseenter', () => decodeEffect(el));
+        });
+
+        // Initialize glitch for hero logo on load
+        window.addEventListener('load', () => {
+            decodeEffect(document.querySelector('.hero-logo'));
+        });
+
+        // --- MAGNETIC CURSOR ENGINE ---
+        const cursor = document.getElementById('cursor');
+        let mouse = { x: 0, y: 0 };
+        let pos = { x: 0, y: 0 };
+        let currentTarget = null;
+
+        window.addEventListener('mousemove', e => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+
+        function updateCursor() {
+            if (currentTarget) {
+                const rect = currentTarget.getBoundingClientRect();
+                const targetX = rect.left + rect.width / 2;
+                const targetY = rect.top + rect.height / 2;
+                pos.x = lerp(pos.x, targetX, 0.2);
+                pos.y = lerp(pos.y, targetY, 0.2);
+            } else {
+                pos.x = lerp(pos.x, mouse.x, 0.15);
+                pos.y = lerp(pos.y, mouse.y, 0.15);
+            }
+
+            cursor.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0) translate(-50%, -50%)`;
+            requestAnimationFrame(updateCursor);
+        }
+        updateCursor();
+
+        document.addEventListener('mouseover', e => {
+            const magnetic = e.target.closest('.magnetic');
+            if (magnetic) {
+                currentTarget = magnetic;
+                cursor.classList.add('magnetic-active');
+            }
+        });
+
+        document.addEventListener('mouseout', e => {
+            if (e.target.closest('.magnetic')) {
+                currentTarget = null;
+                cursor.classList.remove('magnetic-active');
+            }
+        });
+
+        // --- MODULE 02: LEXICAL SCANNER ---
+        const scanInput = document.getElementById('word-scanner-input');
+        const scanBtn = document.getElementById('scan-btn');
+        const scanOutput = document.getElementById('scanner-output');
+
+        scanBtn.addEventListener('click', () => {
+            const text = scanInput.value.trim();
+            if (!text) return;
+
+            const words = text.match(/[\w'-]+/g) || [];
+            if (words.length === 0) return;
+
+            let longest = "";
+            words.forEach(w => {
+                if (w.length > longest.length) longest = w;
+            });
+
+            const charCount = text.replace(/\s/g, '').length;
+            const density = (charCount / words.length).toFixed(2);
+
+            scanOutput.innerText = `[Longest Word: ${longest.toUpperCase()}]
+            [Word Length: ${longest.length}]
+            [Total Word Count: ${words.length}]
+            [Character Density: ${density}]`;
+
+            decodeEffect(scanOutput);
+        });
+
+        // --- MODULE 03: RESPONSIVE SCHEMATIC ---
+        const schematicView = document.getElementById('schematic-view');
+        const schematicLabel = document.getElementById('schematic-label');
+        const layoutItems = ['Header', 'Sidebar', 'Main', 'Aside', 'Widgets', 'Footer'];
+
+        function updateSchematic(size) {
+            schematicView.innerHTML = '';
+            schematicLabel.innerText = `[Current Config: ${size}PX]`;
+
+            layoutItems.forEach(name => {
+                const item = document.createElement('div');
+                item.className = 'schematic-item active';
+                item.innerText = name;
+                item.style.gridArea = name.toLowerCase();
+                schematicView.appendChild(item);
+            });
+
+            if (size === '480') {
+                schematicView.style.gridTemplateAreas = '"header" "main" "sidebar" "aside" "widgets" "footer"';
+                schematicView.style.gridTemplateColumns = '1fr';
+            } else if (size === '768') {
+                schematicView.style.gridTemplateAreas = '"header header" "sidebar main" "aside widgets" "footer footer"';
+                schematicView.style.gridTemplateColumns = '1fr 2fr';
+            } else {
+                schematicView.style.gridTemplateAreas = '"header header header" "sidebar main aside" "sidebar widgets widgets" "footer footer footer"';
+                schematicView.style.gridTemplateColumns = '1fr 2fr 1fr';
+            }
+        }
+
+        document.querySelectorAll('[data-size]').forEach(btn => {
+            btn.addEventListener('click', () => updateSchematic(btn.dataset.size));
+        });
+        updateSchematic('1200');
+
+        // --- MODULE 04: STRING ROTATION ---
+        const rotA = document.getElementById('rotation-a');
+        const rotB = document.getElementById('rotation-b');
+        const rotResult = document.getElementById('rotation-result');
+
+        function checkRotation() {
+            const a = rotA.value;
+            const b = rotB.value;
+
+            if (!a || !b) {
+                rotResult.innerText = "[Minimum Shift Step Matrix: NULL]";
+                return;
+            }
+
+            if (a.length !== b.length) {
+                rotResult.innerText = "[Minimum Shift Step Matrix: -1 (LENGTH MISMATCH)]";
+                return;
+            }
+
+            if (a === b) {
+                rotResult.innerText = "[Minimum Shift Step Matrix: 0]";
+                return;
+            }
+
+            const doubled = a + a;
+            const index = doubled.indexOf(b);
+
+            if (index !== -1) {
+                rotResult.innerText = `[Minimum Shift Step Matrix: ${index}]`;
+                rotResult.style.color = "var(--neon-lime)";
+            } else {
+                rotResult.innerText = "[Minimum Shift Step Matrix: -1 (NO ROTATION)]";
+                rotResult.style.color = "var(--glitch-red)";
+            }
+        }
+
+        rotA.addEventListener('input', checkRotation);
+        rotB.addEventListener('input', checkRotation);
+
+        // --- MODULE 05: LEADERBOARD ---
+        let runners = [
+            { id: 1, name: "VECTOR_X", pace: "04:20", best: "03:50" },
+            { id: 2, name: "NEON_RUNNER", pace: "05:15", best: "04:45" },
+            { id: 3, name: "CYBER_STEP", pace: "03:45", best: "03:10" },
+            { id: 4, name: "BRUTAL_DASH", pace: "04:50", best: "04:15" }
+        ];
+
+        const lbContainer = document.getElementById('leaderboard-container');
+        const ROW_HEIGHT = 42;
+
+        function initLeaderboard() {
+            runners.forEach((r, i) => {
+                const row = document.createElement('div');
+                row.className = 'leaderboard-row';
+                row.id = `runner-${r.id}`;
+                row.innerHTML = `<div>${r.name}</div><div>${r.pace}</div><div>${r.best}</div>`;
+                lbContainer.appendChild(row);
+            });
+            updateLeaderboardPositions();
+        }
+
+        function updateLeaderboardPositions() {
+            runners.forEach((r, i) => {
+                const row = document.getElementById(`runner-${r.id}`);
+                row.style.transform = `translateY(${i * ROW_HEIGHT}px)`;
+            });
+        }
+
+        document.getElementById('sort-pace').addEventListener('click', () => {
+            runners.sort((a, b) => a.pace.localeCompare(b.pace));
+            updateLeaderboardPositions();
+        });
+
+        document.getElementById('sort-name').addEventListener('click', () => {
+            runners.sort((a, b) => a.name.localeCompare(b.name));
+            updateLeaderboardPositions();
+        });
+
+        initLeaderboard();
+
+        // --- MODULE 06: MATRIX SUMMATION ---
+        const matrixGrid = document.getElementById('matrix-grid');
+        const matrixSumHud = document.getElementById('matrix-sum-hud');
+        const values = [10, -7, 32, -15, 64, 0, -3, 18, 99, -22, 42, -8];
+
+        function updateSum() {
+            let sum = 0;
+            document.querySelectorAll('.matrix-cell input:checked').forEach(input => {
+                sum += parseInt(input.value);
+            });
+            matrixSumHud.innerText = `[Current Global Aggregate Sum: ${sum}]`;
+        }
+
+        values.forEach(v => {
+            const cell = document.createElement('div');
+            cell.className = 'matrix-cell';
+            cell.innerHTML = `
+                <input type="checkbox" value="${v}" class="magnetic">
+                <span class="cell-val">${v}</span>
+                <div class="bg-glow"></div>
+            `;
+            cell.querySelector('input').addEventListener('change', updateSum);
+            matrixGrid.appendChild(cell);
+        });
+
+        // --- MODULE 07: QUANTUM CHRONOMETER ---
+        let is24h = true;
+        const mainClock = document.getElementById('main-clock');
+        const toggle24h = document.getElementById('toggle-24h');
+
+        function updateClock() {
+            const now = new Date();
+            let h = now.getHours();
+            const m = String(now.getMinutes()).padStart(2, '0');
+            const s = String(now.getSeconds()).padStart(2, '0');
+            const ms = String(now.getMilliseconds()).padStart(3, '0');
+
+            let suffix = '';
+            if (!is24h) {
+                suffix = h >= 12 ? ' PM' : ' AM';
+                h = h % 12 || 12;
+            }
+            h = String(h).padStart(2, '0');
+
+            mainClock.innerHTML = `${h}:${m}:${s}<span class="ms-flash">.${ms}</span>${suffix}`;
+            requestAnimationFrame(updateClock);
+        }
+        updateClock();
+
+        toggle24h.addEventListener('click', () => { is24h = !is24h; });
+
+        let timerInterval = null;
+        const timerInput = document.getElementById('timer-input');
+        const startBtn = document.getElementById('start-timer');
+        const countDisplay = document.getElementById('countdown-display');
+
+        startBtn.addEventListener('click', () => {
+            clearInterval(timerInterval);
+            let time = parseFloat(timerInput.value);
+            if (isNaN(time) || time <= 0) return;
+
+            const startTime = performance.now();
+            const duration = time * 1000;
+
+            timerInterval = setInterval(() => {
+                const elapsed = performance.now() - startTime;
+                const remaining = Math.max(0, duration - elapsed);
+                const seconds = (remaining / 1000).toFixed(2);
+
+                countDisplay.innerText = `${seconds}s`;
+
+                if (remaining < 3000 && remaining > 0) {
+                    countDisplay.classList.add('timer-warning');
+                } else {
+                    countDisplay.classList.remove('timer-warning');
+                }
+
+                if (remaining <= 0) {
+                    clearInterval(timerInterval);
+                    countDisplay.innerText = "TIME_ELAPSED";
+                }
+            }, 10);
+        });
+
+        // --- MODULE 08: GRID STRUCTURAL LAB ---
+        function setLabState(state) {
+            const vp = document.getElementById('lab-viewport');
+            vp.setAttribute('data-state', state);
+        }
+
+        // --- MODULE 09: INTEGER SUMP ---
+        function processSump() {
+            const input = document.getElementById('sump-input').value;
+            const meta = document.getElementById('sump-meta');
+            const result = document.getElementById('sump-result');
+
+            const nums = input.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n));
+
+            if (nums.length < 2) {
+                meta.innerHTML = "[ERROR: MIN_ARRAY_LENGTH_2]";
+                result.innerText = "[Sump Total: NULL]";
+                return;
+            }
+
+            const sorted = [...nums].sort((a, b) => b - a);
+            const top1 = sorted[0];
+            const top2 = sorted[1];
+            const sum = top1 + top2;
+
+            meta.innerHTML = `
+                ARRAY_SIZE: ${nums.length}<br>
+                MAX_01: <span class="sump-highlight">${top1}</span><br>
+                MAX_02: <span class="sump-highlight">${top2}</span>
+            `;
+            result.innerText = `[Sump Total: ${sum}]`;
+
+            // Trigger decode on result
+            decodeEffect(result);
+        }
+
+        // --- MODULE 10: SPRINTER SIMULATOR ---
+        const pauseToggle = document.getElementById('pause-toggle');
+        const sprinter = document.getElementById('sprinter-asset');
+
+        pauseToggle.addEventListener('change', () => {
+            if (pauseToggle.checked) {
+                sprinter.classList.add('paused');
+            } else {
+                sprinter.classList.remove('paused');
+            }
+        });
+
+        // --- SCROLL VELOCITY SKEW ENGINE ---
+        // --- MODULE 01: PALINDROME EVALUATOR ---
+        const palInput = document.getElementById('palindrome-input');
+        const palResult = document.getElementById('palindrome-result');
+
+        palInput.addEventListener('input', () => {
+            const val = palInput.value;
+            if (!val) {
+                palResult.innerText = "[IsPalindrome: NULL]";
+                palResult.style.color = "var(--cyber-blue)";
+                palInput.style.borderColor = "#444";
+                return;
+            }
+
+            // Unicode-aware normalization: remove non-alphanumeric, lowercase
+            const normalized = Array.from(val.toLowerCase().replace(/[\W_]/gu, ''));
+            const isPal = normalized.length > 0 && normalized.join('') === [...normalized].reverse().join('');
+
+            palResult.innerText = `[IsPalindrome: ${isPal.toString().toUpperCase()}]`;
+
+            if (isPal) {
+                palResult.style.color = "var(--neon-lime)";
+                palInput.style.borderColor = "var(--neon-lime)";
+                palResult.classList.add('glitch-flicker');
+            } else {
+                palResult.style.color = "var(--glitch-red)";
+                palInput.style.borderColor = "var(--glitch-red)";
+                palResult.classList.remove('glitch-flicker');
+            }
+        });
+
+        const scrollContent = document.getElementById('scroll-content');
+        let currentScroll = window.pageYOffset;
+        let skew = 0;
+
+        function updateScroll() {
+            const newScroll = window.pageYOffset;
+            const diff = newScroll - currentScroll;
+            currentScroll = newScroll;
+
+            skew = lerp(skew, diff * 0.1, 0.1);
+            const limitedSkew = Math.max(Math.min(skew, 15), -15);
+
+            scrollContent.style.transform = `skewY(${limitedSkew}deg)`;
+
+            requestAnimationFrame(updateScroll);
+        }
+        updateScroll();
+
+    </script>
+</body>
+</html>
